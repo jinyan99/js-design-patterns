@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+    <p>有限状态机</p>
+    <button id="btn"></button>
+    
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="./03-javascript-state-machine.js"></script>
+    <script>
+        // 状态机模型
+        var fsm = new StateMachine({
+            init: '收藏',  // 初始状态，待收藏
+            transitions: [
+                {
+                    name: 'doStore', // 意思就是执行name方法就能让其从收藏状态转向取消收藏状态
+                    from: '收藏',
+                    to: '取消收藏'
+                },
+                {
+                    name: 'deleteStore',
+                    from: '取消收藏',
+                    to: '收藏'
+                }
+            ],
+            methods: {
+                // 监听执行收藏
+                onDoStore: function () {
+                    alert('收藏成功') // 可以做post请求
+                    updateText()
+                },
+                // 监听取消收藏
+                onDeleteStore: function () {
+                    alert('已取消收藏')// 可以做post请求
+                    updateText()
+                }
+            }
+        })
+
+        var $btn = $('#btn')
+
+        // 点击事件
+        $btn.click(function () {
+            if (fsm.is('收藏')) {
+                // doStore方法要与状态机里的transitions里的name值方法对应好的，应该会执行to方向，收藏状态进入到取消收藏状态
+                fsm.doStore(1)
+                // 执行doStore的时候，首先状态机里的state状态变为to的值，同时触发观察者methods中onDoStore监听函数(执行updateText()更新按钮文案)
+            } else {
+                fsm.deleteStore()
+            }
+        })
+
+        // 更新文案
+        function updateText() {
+            $btn.text(fsm.state)
+        }
+
+        // 初始化文案
+        updateText()
+    </script>
+</body>
+</html>
