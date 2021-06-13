@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+	</head>
+	<body>
+		1.add的参数兼容，比如cb.add(fn1).add(fn2)等同于add(fn1,fn2)等同于add([fn1,fn2])。
+		2.$.Callbacks("memory")，第一次fire，执行之前的函数队列。fire之后add的时候，就执行加入的函数。
+		3.$.Callbacks("unique")，add的时候判断当前函数，是否已存于执行队列中。
+		4.$.Callbacks("once")，第一次fire的时候，打个标记表明once了。第二次fire的时候，有once，就不执行队列。
+		5.$.Callbacks("stopOnFalse")，判断执行队列中函数的执行结果，为false，则中断函数队列的遍历执行。
+		6.$.Callbacks("memory
+		once")，字符串对象化，使得字符串顺序变换也没关系。之后各回各家，该干嘛干嘛去。
+		7.$.Callbacks是一个对象工厂。
+		8.$.Callbacks的lock和disable的区别。lock只是不再add，但还能fire。disable不仅不能add，连fire也不行。
+		9.$.Callbacks的remove方法，就是从队列去除指定函数。
+		10.fire的时候可以指定上下文
+	</body>
+	<script type="text/javascript">
+		function showType(type, obj) {
+			var clas = Object.prototype.toString.call(obj).slice(8, -1).toLowerCase()
+			return obj !== undefined && obj !== null && clas === type
+		}
+
+		var $ = {}
+
+		// 依赖  类型判断showType，遍历处理
+		$.Callbacks = function (strArg) {
+			var list = []
+			var fired_flag = false
+			var lock_flag = false,
+				disable_flag = false
+			var str_list = strArg.split(' ')
+			var fire_args = []
+
+			var cbArg_obj = {
+				once: false,
+				unique: false,
+				memory: false,
+				stopOnFalse: false
+			}
+
+			for (var i = 0, l = str_list.length; i < l; i++) {
+				cbArg_obj[str_list[i]] = true
+			}
+
+			var once_flag = cbArg_obj['once'],
+				unique_flag = cbArg_obj['unique'],
+				memory_flag = cbArg_obj['memory'],
+				stopOnFalse_flag = cbArg_obj['stopOnFalse']
+
+			var self = {
+				add: function () {
+					if (lock_flag || disable_flag) {
+						return
+					}
+					// 参数兼容
+					var arg = arguments
+					;(function add(arg) {
+						for (var i = 0, l = arg.length; i < l; i++) {
+							var argItem = arg[i]
+                // 用～检测-1这个值，当出现-1时就会变成0
+							if (~list.indexOf(argItem) && unique_flag) {
+								return
+							}
+							if (showType('function', argItem)) {
+								list.push(argItem)
+								if (memory_flag && fired_flag) {
+									argItem.apply(null, fire_args)
+								}
+							} else if (showType('array', argItem)) {
+								add(argItem)
+							}
+						}
+					})(arg)
+
+					// 为了链性调用
+					return this
+				},
+				fire: function () {
+					if ((once_flag && fired_flag) || disable_flag) {
+						return
+					}
+					if (arguments.length) {
+						fire_args = arguments || []
+					}
+					for (var i = 0, l = list.length; i < l; i++) {
+						if (list[i].apply(this, fire_args) == false && stopOnFalse_flag) {
+							break
+						}
+					}
+					fired_flag = true
+				},
+				remove: function (fn) {
+					for (var i = 0, l = list.length; i < l; i++) {
+						if (list[i] == fn) {
+							list.splice(i, 1)
+						}
+					}
+				},
+				lock: function () {
+					lock_flag = true
+				},
+				disable: function () {
+					disable_flag = true
+				}
+			}
+			return self
+		}
+
+		function fn1() {
+			alert(1)
+		}
+
+		function fn2() {
+			alert(2)
+		}
+		function fn3() {
+			alert(3)
+		}
+		function fn4() {
+			alert(4)
+		}
+		function fnThis(arg) {
+			alert(arg)
+		}
+		function fnFalse() {
+			return false
+		}
+		var cb = $.Callbacks('once memory')
+		cb.add(fn1).add(fn2).add(fn4)
+		cb.fire('hi')
+		cb.add(fnThis)
+		cb.fire('aaa')
+	</script>
+</html>
